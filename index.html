@@ -9,6 +9,7 @@
 <title>Motion Cam</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{height:100%;margin:0;background:#0B1116;color:#EAF0F4;font:16px/1.4 system-ui,sans-serif;overflow:hidden}
 #app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
 button,input{font:inherit;color:inherit}
@@ -20,19 +21,19 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 #stage{flex:1;min-height:0;position:relative;display:grid;place-items:center;padding:6px 14px}
 #frame{position:relative;overflow:hidden;border-radius:16px;background:#000;box-shadow:0 0 0 2px #2A3844}
 #frame video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-#info{position:absolute;top:12px;left:0;right:0;text-align:center;font-size:.8rem;color:#93A4B1}
+#info{text-align:center;font-size:.8rem;color:#93A4B1;padding:0 14px;min-height:1.3em}
 #msg{position:absolute;bottom:10px;left:14px;right:14px;text-align:center;font-weight:600;text-shadow:0 1px 4px #000}
 #panel{background:#101922;border-radius:22px 22px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;gap:12px}
-.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
-.chip,.pill{flex:none;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:6px 14px;font-weight:700;font-size:.92rem;cursor:pointer}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+.chip,.pill{flex:none;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:8px 14px;min-height:40px;font-weight:700;font-size:.92rem;cursor:pointer}
 .chip.on,.pill.on{background:#5B7CFF;border-color:#5B7CFF;color:#0B1116}
-.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
-.lbl{font-size:.8rem;color:#93A4B1;flex:none;width:44px}
+.row{display:flex;align-items:center;gap:8px}
+.lbl{font-size:.8rem;color:#93A4B1;flex:none;width:48px}
 .dur{flex:none;display:flex;align-items:center;gap:6px;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:2px 12px}
 .dur input{width:48px;background:none;border:0;text-align:center;font-weight:800;padding:4px 0;-moz-appearance:textfield}
 .dur span{font-size:.85rem;color:#93A4B1}
-.ctl{display:flex;align-items:center;justify-content:space-between}
-.ctl .pill{width:104px;text-align:center}
+.ctl{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
+.ctl .pill{width:100%;max-width:120px}.ctl .pill:last-child{justify-self:end}
 #ring{--p:0;width:88px;height:88px;border-radius:50%;padding:6px;background:conic-gradient(#5B7CFF calc(var(--p)*360deg),#2A3844 0)}
 #shot{width:100%;height:100%;border-radius:50%;background:#fff;border:5px solid #101922;cursor:pointer}
 #shot:active{background:#C8D3FF}#shot:disabled{opacity:.45}
@@ -59,10 +60,11 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 <nav><button id="t1" class="on">Kamera</button><button id="t2">Konverter</button></nav>
 
 <section id="cam">
-<div id="stage"><div id="frame"><video id="v" playsinline muted autoplay></video></div><div id="info"></div><div id="msg">Memulai kamera…</div></div>
+<div id="info"></div>
+<div id="stage"><div id="frame"><video id="v" playsinline muted autoplay></video></div><div id="msg">Memulai kamera…</div></div>
 <div id="panel">
 <div class="row"><span class="lbl">Rasio</span><div class="chips" id="asp"></div></div>
-<div class="row"><span class="lbl">Durasi</span><div class="chips" id="dch"></div><label class="dur"><input id="dur" type="number" inputmode="decimal" min="1" max="15" step="0.5" aria-label="Durasi video dalam detik"><span>dtk</span></label></div>
+<div class="row"><span class="lbl">Durasi</span><div class="chips" id="dch"></div><label class="dur"><input id="dur" type="number" inputmode="decimal" min="1" max="30" step="0.5" aria-label="Durasi video dalam detik"><span>dtk</span></label></div>
 <div class="ctl"><button class="pill" id="fl" aria-pressed="false">Flash mati</button><div id="ring"><button id="shot" aria-label="Jepret" disabled></button></div><button class="pill" id="gear">Kualitas</button></div>
 </div>
 <div id="set" hidden><div>
@@ -77,7 +79,7 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 <section id="conv" hidden>
 <label class="slot" id="s1"><input type="file" id="img" accept="image/jpeg"><b>1. Pilih foto JPG</b><span id="n1">Belum dipilih</span></label>
 <label class="slot" id="s2"><input type="file" id="vid" accept="video/mp4"><b>2. Pilih video MP4</b><span id="n2">Belum dipilih</span></label>
-<div class="fld"><label for="ts">Detik foto muncul di dalam video</label><input id="ts" type="number" min="0" step="0.1" inputmode="decimal" value="0"></div>
+<div class="fld"><label for="ts">Detik foto muncul di dalam video</label><input id="ts" type="number" min="0" step="any" inputmode="decimal" value="0"></div>
 <button class="big" id="go" disabled>Buat Motion Photo</button>
 </section>
 </div>
@@ -95,11 +97,11 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 var $=function(i){return document.getElementById(i)};
 var A={'3:4':3/4,'4:3':4/3,'1:1':1,'9:16':9/16,'16:9':16/9,'Full':0};
 var R={'720':[1280,720],'1080':[1920,1080],'max':[3840,2160]};
-var st={ar:'3:4',res:'1080',fps:30,dur:3};
-try{Object.assign(st,JSON.parse(localStorage.getItem('mc')||'{}'))}catch(e){}
-function save(){try{localStorage.setItem('mc',JSON.stringify(st))}catch(e){}}
+var st={ar:'3:4',res:'1080',fps:30,dur:8};
+try{Object.assign(st,JSON.parse(localStorage.getItem('mc2')||'{}'))}catch(e){}
+function save(){try{localStorage.setItem('mc2',JSON.stringify(st))}catch(e){}}
 var v=$('v'),msg=$('msg'),shot=$('shot'),cv=document.createElement('canvas'),g=cv.getContext('2d');
-var stream,track,ic,enc,desc,cr,ring=[],lastKey=-1e9,busy=false,flash=false,looping=false,result=null;
+var stream,track,ic,enc,desc,cr,ring=[],lastKey=-1e9,busy=false,flash=false,looping=false,result=null,srcW=0,srcH=0,infoBase='',lastInfo=0;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function say(t){msg.textContent=t||''}
 
@@ -114,7 +116,7 @@ function fit(){
   $('frame').style.width=fw+'px';$('frame').style.height=fh+'px';
 }
 function drawAsp(){mk($('asp'),Object.keys(A).map(function(k){return{t:k,v:k}}),function(){return st.ar},function(x){st.ar=x;save();fit();setupEnc()})}
-function setDur(x){x=parseFloat(x);if(!isFinite(x))x=3;x=Math.min(15,Math.max(1,x));st.dur=x;$('dur').value=x;save();mk($('dch'),[2,3,5,10,15].map(function(n){return{t:n,v:n}}),function(){return st.dur},setDur)}
+function setDur(x){x=parseFloat(x);if(!isFinite(x))x=8;x=Math.min(30,Math.max(1,x));st.dur=x;$('dur').value=x;save();mk($('dch'),[3,5,8,15,30].map(function(n){return{t:n,v:n}}),function(){return st.dur},setDur)}
 $('dur').onchange=function(){setDur(this.value)};
 $('fl').onclick=function(){flash=!flash;this.classList.toggle('on',flash);this.setAttribute('aria-pressed',flash);this.textContent='Flash '+(flash?'nyala':'mati')};
 $('gear').onclick=function(){
@@ -123,7 +125,7 @@ $('gear').onclick=function(){
   $('set').hidden=false;
 };
 $('apply').onclick=function(){$('set').hidden=true;save();startCam()};
-window.addEventListener('resize',fit);v.addEventListener('resize',function(){fit();setupEnc()});
+window.addEventListener('resize',fit);v.addEventListener('resize',function(){fit();if(v.videoWidth!==srcW||v.videoHeight!==srcH)setupEnc()});
 
 /* ---------- kamera + encoder H.264 (buffer terenkode) ---------- */
 function crop(w,h,ar){
@@ -151,9 +153,9 @@ async function setupEnc(){
   shot.disabled=true;ring=[];desc=null;
   try{if(enc&&enc.state!=='closed')enc.close()}catch(e){}
   enc=null;
-  cr=crop(v.videoWidth,v.videoHeight,A[st.ar]);
+  srcW=v.videoWidth;srcH=v.videoHeight;cr=crop(srcW,srcH,A[st.ar]);
   cv.width=cr.w&~1;cv.height=cr.h&~1;
-  var fps=st.fps,br=Math.min(40e6,Math.round(cv.width*cv.height*fps*.12)),cfg=null;
+  var fps=st.fps,br=Math.min(25e6,Math.round(cv.width*cv.height*fps*.12)),cfg=null;
   var codecs=['avc1.640033','avc1.4d0033','avc1.420033'];
   for(var i=0;i<codecs.length&&!cfg;i++){
     var t={codec:codecs[i],width:cv.width,height:cv.height,bitrate:br,framerate:fps,latencyMode:'realtime',avc:{format:'avc'},hardwareAcceleration:'prefer-hardware'};
@@ -163,7 +165,7 @@ async function setupEnc(){
   var e2=new VideoEncoder({output:onChunk,error:function(x){say('Encoder error: '+x.message)}});
   e2.configure(cfg);lastKey=-1e9;enc=e2;
   var set=track.getSettings();
-  $('info').textContent=cv.width+'×'+cv.height+' · '+Math.round(set.frameRate||fps)+' fps';
+  infoBase=cv.width+'×'+cv.height+' · '+Math.round(set.frameRate||fps)+' fps';$('info').textContent=infoBase;
   say('');shot.disabled=false;
 }
 function loop(now){
@@ -180,10 +182,11 @@ function onChunk(c,m){
   var b=new Uint8Array(c.byteLength);c.copyTo(b);
   ring.push({ts:c.timestamp,key:c.type==='key',d:b});
   var last=c.timestamp;
-  while(ring.length&&ring[0].ts<last-17e6)ring.shift();
+  while(ring.length&&ring[0].ts<last-(st.dur+5)*1e6)ring.shift();
   while(ring.length&&!ring[0].key)ring.shift();
   var span=ring.length?(last-ring[0].ts)/1e6:0;
   $('ring').style.setProperty('--p',Math.min(1,span/st.dur));
+  var tn=performance.now();if(tn-lastInfo>300){lastInfo=tn;$('info').textContent=infoBase+' · buffer '+Math.min(span,st.dur).toFixed(1)+'/'+st.dur+' dtk'}
 }
 
 /* ---------- MP4 muxer (satu track H.264) ---------- */
@@ -227,23 +230,35 @@ async function cropStill(b){
 async function torch(on){try{await track.applyConstraints({advanced:[{torch:on}]})}catch(e){}}
 
 shot.onclick=async function(){
-  if(busy||!ring.length||!desc)return;
-  var D=st.dur*1e6,snap=ring.slice(),last=snap[snap.length-1].ts,idx=-1,i;
-  for(i=snap.length-1;i>=0;i--){if(snap[i].key&&snap[i].ts<=last-D){idx=i;break}}
-  if(idx<0)idx=snap.findIndex(function(s){return s.key});
-  if(idx<0||snap.length-idx<3){say('Buffer belum terisi, tunggu sebentar.');return}
-  var S=snap.slice(idx);busy=true;shot.disabled=true;say('Mengambil foto…');
+  if(busy||!enc||!desc)return;
+  busy=true;shot.disabled=true;
+  var hasTorch=false;
   try{
-    var still=null;
-    if(ic){try{still=await ic.takePhoto(flash?{fillLightMode:'flash'}:{});still=await cropStill(still)}catch(e){still=null}}
-    if(!still){if(flash){await torch(true);await sleep(250)}still=await grab();if(flash)await torch(false)}
+    var caps=(track.getCapabilities&&track.getCapabilities())||{},still=null;hasTorch=!!caps.torch;
+    if(flash&&hasTorch){say('Menyalakan flash…');await torch(true);await sleep(600)}
+    say('Mengambil foto…');
+    var tEnd=Math.round(performance.now()*1000);
+    if(ic){
+      var opts=[{fillLightMode:(flash&&!hasTorch)?'flash':'off'},{}];
+      for(var k=0;k<opts.length&&!still;k++){try{still=await cropStill(await ic.takePhoto(opts[k]))}catch(e){still=null}}
+    }
+    if(!still)still=await grab();
+    if(flash&&hasTorch)await torch(false);
+    await sleep(200);
     say('Memproses video…');
-    var avg=Math.max(1,Math.round((S[S.length-1].ts-S[0].ts)/(S.length-1))),total=0;
-    var smp=S.map(function(s,i){var nx=S[i+1],d=nx?Math.max(1,nx.ts-s.ts):avg;total+=d;return{d:s.d,key:s.key,dur:d}});
+    var D=st.dur*1e6,snap=ring.filter(function(x){return x.ts<=tEnd}),idx=-1,i;
+    if(snap.length<3)throw new Error('Buffer belum terisi, coba lagi.');
+    var last=snap[snap.length-1].ts;
+    for(i=snap.length-1;i>=0;i--){if(snap[i].key&&snap[i].ts<=last-D){idx=i;break}}
+    if(idx<0)idx=snap.findIndex(function(x){return x.key});
+    if(idx<0||snap.length-idx<3)throw new Error('Buffer belum terisi, coba lagi.');
+    var S=snap.slice(idx),avg=Math.max(1,Math.round((S[S.length-1].ts-S[0].ts)/(S.length-1))),total=0;
+    var smp=S.map(function(x,n){var nx=S[n+1],d=nx?Math.max(1,nx.ts-x.ts):avg;total+=d;return{d:x.d,key:x.key,dur:d}});
     var mp4=new Uint8Array(await mux(smp,cv.width,cv.height,desc).arrayBuffer());
-    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,total-avg),'MOTION_'+Date.now()+'.jpg',still);
+    var secs=total/1e6,note='video '+secs.toFixed(1)+' dtk'+(secs<st.dur-0.7?' (buffer belum penuh)':'');
+    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,Math.max(0,total-1000)),'MOTION_'+Date.now()+'.jpg',still,note);
     say('');
-  }catch(e){say('Gagal: '+(e.message||e))}
+  }catch(e){if(hasTorch)await torch(false);say('Gagal: '+(e.message||e))}
   busy=false;shot.disabled=false;
 };
 
@@ -274,10 +289,10 @@ function build(jpg,mp4,tsUs){
 }
 
 /* ---------- hasil ---------- */
-function finish(blob,name,prev){
+function finish(blob,name,prev,note){
   result={blob:blob,name:name};
   $('ri').src=URL.createObjectURL(prev||blob);
-  $('rt').textContent='Motion photo siap ('+(blob.size/1048576).toFixed(1)+' MB)';
+  $('rt').textContent='Motion photo siap ('+(blob.size/1048576).toFixed(1)+' MB'+(note?' · '+note:'')+')';
   $('res').hidden=false;
 }
 $('again').onclick=function(){$('res').hidden=true;URL.revokeObjectURL($('ri').src)};
@@ -298,7 +313,7 @@ pick('img','n1','s1');pick('vid','n2','s2');
 $('vid').addEventListener('change',function(){
   var f=this.files[0];if(!f)return;
   var e=document.createElement('video'),u=URL.createObjectURL(f);e.preload='metadata';
-  e.onloadedmetadata=function(){dv=isFinite(e.duration)?e.duration:0;if(dv)$('ts').value=(Math.floor(dv*10)/10).toFixed(1);URL.revokeObjectURL(u)};
+  e.onloadedmetadata=function(){dv=isFinite(e.duration)?e.duration:0;if(dv)$('ts').value=Math.max(0,dv-0.001).toFixed(3);URL.revokeObjectURL(u)};
   e.src=u;
 });
 $('go').onclick=async function(){
