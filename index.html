@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1116">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<title>Motion Cam</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#0B1116;color:#EAF0F4;font:16px/1.4 system-ui,sans-serif;overflow:hidden}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+nav{display:flex;gap:6px;padding:10px 14px}
+nav button,.seg button,#fl{font:inherit;font-weight:700;color:#EAF0F4;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:8px 16px}
+nav button{flex:1}
+nav button.on,.seg button.on,#fl.on{background:#5B7CFF;border-color:#5B7CFF;color:#0B1116}
+button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+section{flex:1;position:relative;min-height:0}
+#cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+#msg{position:absolute;top:10px;left:14px;right:14px;text-align:center;font-weight:600;text-shadow:0 1px 4px #000}
+#bar{position:absolute;left:0;right:0;bottom:0;padding:24px 14px calc(18px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;align-items:center;gap:16px;background:linear-gradient(transparent,#000A)}
+.row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.seg{display:flex;gap:6px}
+#shot{width:78px;height:78px;border-radius:50%;background:#fff;border:6px solid #0B1116;box-shadow:0 0 0 4px #fff;cursor:pointer}
+#shot:disabled{opacity:.4}
+#conv{padding:8px 16px;overflow:auto}
+.slot{position:relative;display:block;background:#16212A;border:2px solid #2A3844;border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.slot.done{border-color:#5B7CFF}
+.slot input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
+.slot b{display:block}.slot span{color:#93A4B1;font-size:.9rem;word-break:break-all}
+.fld{margin:16px 0}.fld label{display:block;font-weight:700;margin-bottom:6px}
+.fld input{width:100%;font:inherit;color:#EAF0F4;background:#16212A;border:2px solid #2A3844;border-radius:12px;padding:12px}
+.big{width:100%;font:inherit;font-weight:800;font-size:1.05rem;color:#0B1116;background:#5B7CFF;border:0;border-radius:12px;padding:15px}
+.big:disabled{opacity:.4}.big.alt{background:#1A242D;color:#EAF0F4;border:2px solid #2A3844}
+#res{position:fixed;inset:0;background:#0B1116;z-index:5;display:flex;flex-direction:column;gap:12px;padding:calc(16px + env(safe-area-inset-top,0)) 16px calc(16px + env(safe-area-inset-bottom,0))}
+#res[hidden]{display:none}
+#ri{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:12px;background:#000}
+#rt{margin:0;text-align:center;color:#93A4B1}
+</style>
+</head>
+<body>
+<div id="app">
+<nav><button id="t1" class="on">Kamera</button><button id="t2">Konverter</button></nav>
+
+<section id="cam">
+<video id="v" playsinline muted autoplay></video>
+<div id="msg">Memulai kamera…</div>
+<div id="bar">
+<div class="row"><div class="seg" id="dsel"><button data-d="1">1 dtk</button><button data-d="2" class="on">2 dtk</button><button data-d="3">3 dtk</button></div>
+<button id="fl" aria-pressed="false">Flash: mati</button></div>
+<button id="shot" aria-label="Jepret" disabled></button>
+</div>
+</section>
+
+<section id="conv" hidden>
+<label class="slot" id="s1"><input type="file" id="img" accept="image/jpeg"><b>1. Pilih foto JPG</b><span id="n1">Belum dipilih</span></label>
+<label class="slot" id="s2"><input type="file" id="vid" accept="video/mp4"><b>2. Pilih video MP4</b><span id="n2">Belum dipilih</span></label>
+<div class="fld"><label for="ts">Detik foto muncul di dalam video</label><input id="ts" type="number" min="0" step="0.1" inputmode="decimal" value="0"></div>
+<button class="big" id="go" disabled>Buat Motion Photo</button>
+</section>
+</div>
+
+<div id="res" hidden>
+<img id="ri" alt="Hasil">
+<p id="rt"></p>
+<button class="big" id="sv">Simpan</button>
+<button class="big alt" id="sh">Bagikan / kirim ke Google Foto</button>
+<button class="big alt" id="again">Kembali</button>
+</div>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var FPS=15,W=960,dur=2,flash=false,busy=false,ring=[],ticking=false,track,ic,result=null;
+var v=$('v'),msg=$('msg'),shot=$('shot');
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function say(t){msg.textContent=t||''}
+
+/* --- tab --- */
+function tab(n){$('cam').hidden=n!==1;$('conv').hidden=n!==2;$('t1').classList.toggle('on',n===1);$('t2').classList.toggle('on',n===2)}
+$('t1').onclick=function(){tab(1)};$('t2').onclick=function(){tab(2)};
+
+/* --- durasi & flash --- */
+$('dsel').onclick=function(e){var b=e.target.closest('button');if(!b)return;dur=+b.dataset.d;
+  [].forEach.call($('dsel').children,function(x){x.classList.toggle('on',x===b)})};
+$('fl').onclick=function(){flash=!flash;this.classList.toggle('on',flash);this.setAttribute('aria-pressed',flash);this.textContent='Flash: '+(flash?'nyala':'mati')};
+
+/* --- kamera + buffer bingkai (pre-roll) --- */
+async function start(){
+  try{
+    var s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
+    v.srcObject=s;track=s.getVideoTracks()[0];
+    if(window.ImageCapture)ic=new ImageCapture(track);
+    say('');shot.disabled=false;
+    setInterval(tick,1000/FPS);
+  }catch(e){say('Kamera tidak bisa dibuka. Izinkan akses kamera lalu muat ulang.')}
+}
+async function tick(){
+  if(busy||ticking||v.readyState<2)return;ticking=true;
+  try{
+    var b=await createImageBitmap(v,{resizeWidth:W,resizeQuality:'low'}),t=performance.now();
+    ring.push({t:t,b:b});
+    while(ring.length&&t-ring[0].t>3300)ring.shift().b.close();
+  }catch(e){}
+  ticking=false;
+}
+function grab(){
+  var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  return new Promise(function(r){c.toBlob(r,'image/jpeg',.92)});
+}
+async function encode(frames){
+  var mime=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4'].find(function(m){return MediaRecorder.isTypeSupported(m)});
+  if(!mime)throw new Error('Browser belum bisa merekam MP4. Pakai Chrome Android terbaru.');
+  var c=document.createElement('canvas');c.width=frames[0].b.width&~1;c.height=frames[0].b.height&~1;
+  var g=c.getContext('2d');g.drawImage(frames[0].b,0,0,c.width,c.height);
+  var cs=c.captureStream(FPS),rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:4e6}),ch=[];
+  rec.ondataavailable=function(e){if(e.data.size)ch.push(e.data)};
+  var fin=new Promise(function(r){rec.onstop=r});
+  rec.start();
+  var t0=frames[0].t,s0=performance.now();
+  for(var i=0;i<frames.length;i++){
+    var w=(frames[i].t-t0)-(performance.now()-s0);if(w>0)await sleep(w);
+    g.drawImage(frames[i].b,0,0,c.width,c.height);
+  }
+  await sleep(1000/FPS);rec.stop();await fin;cs.getTracks().forEach(function(t){t.stop()});
+  return new Blob(ch,{type:'video/mp4'});
+}
+shot.onclick=async function(){
+  if(busy)return;
+  var now=performance.now(),frames=ring.filter(function(f){return now-f.t<=dur*1000});
+  if(frames.length<3){say('Tunggu sebentar, buffer belum terisi.');return}
+  busy=true;shot.disabled=true;ring=[];say('Mengambil foto…');
+  try{
+    var still=null;
+    if(ic){try{still=await ic.takePhoto(flash?{fillLightMode:'flash'}:{})}catch(e){}}
+    if(!still)still=await grab();
+    say('Memproses video…');
+    var mp4=await encode(frames);
+    var tsUs=Math.round((frames[frames.length-1].t-frames[0].t)*1000);
+    finish(build(new Uint8Array(await still.arrayBuffer()),new Uint8Array(await mp4.arrayBuffer()),tsUs),'MOTION_'+Date.now()+'.jpg',still);
+    say('');
+  }catch(e){say('Gagal: '+(e.message||e))}
+  frames.forEach(function(f){f.b.close()});
+  busy=false;shot.disabled=false;
+};
+
+/* --- gabung JPG + MP4 (format Google Motion Photo) --- */
+function sw(a,o,s){for(var i=0;i<s.length;i++)if(a[o+i]!==s.charCodeAt(i))return false;return true}
+function build(jpg,mp4,tsUs){
+  if(jpg[0]!==0xFF||jpg[1]!==0xD8)throw new Error('Foto bukan JPG yang valid.');
+  var enc=new TextEncoder(),L=mp4.length;
+  var xml='<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'+
+  '<rdf:Description rdf:about="" xmlns:GCamera="http://ns.google.com/photos/1.0/camera/" xmlns:Container="http://ns.google.com/photos/1.0/container/" xmlns:Item="http://ns.google.com/photos/1.0/container/item/" '+
+  'GCamera:MotionPhoto="1" GCamera:MotionPhotoVersion="1" GCamera:MotionPhotoPresentationTimestampUs="'+tsUs+'" GCamera:MicroVideo="1" GCamera:MicroVideoVersion="1" GCamera:MicroVideoOffset="'+L+'" GCamera:MicroVideoPresentationTimestampUs="'+tsUs+'">'+
+  '<Container:Directory><rdf:Seq><rdf:li rdf:parseType="Resource"><Container:Item Item:Mime="image/jpeg" Item:Semantic="Primary" Item:Length="0" Item:Padding="0"/></rdf:li>'+
+  '<rdf:li rdf:parseType="Resource"><Container:Item Item:Mime="video/mp4" Item:Semantic="MotionPhoto" Item:Length="'+L+'" Item:Padding="0"/></rdf:li></rdf:Seq></Container:Directory></rdf:Description></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+  var h=enc.encode('http://ns.adobe.com/xap/1.0/\x00'),b=enc.encode(xml),n=h.length+b.length+2,x=new Uint8Array(n+2);
+  x[0]=0xFF;x[1]=0xE1;x[2]=n>>8;x[3]=n&255;x.set(h,4);x.set(b,4+h.length);
+  var p=2,keep=[];
+  while(p<jpg.length-3&&jpg[p]===0xFF){
+    var m=jpg[p+1];if(m===0xDA)break;
+    var len=(jpg[p+2]<<8)|jpg[p+3],seg=jpg.subarray(p,p+2+len);
+    if(!(m===0xE1&&sw(seg,4,'http://ns.adobe.com/xap/1.0/')))keep.push(seg);
+    p+=2+len;
+  }
+  var parts=[jpg.subarray(0,2)],ok=false;
+  keep.forEach(function(s){if(!ok&&s[1]!==0xE0&&s[1]!==0xE1){parts.push(x);ok=true}parts.push(s)});
+  if(!ok)parts.push(x);
+  parts.push(jpg.subarray(p),mp4);
+  return new Blob(parts,{type:'image/jpeg'});
+}
+
+/* --- hasil: simpan / bagikan --- */
+function finish(blob,name,prev){
+  result={blob:blob,name:name};
+  $('ri').src=URL.createObjectURL(prev||blob);
+  $('rt').textContent='Motion photo siap ('+(blob.size/1048576).toFixed(1)+' MB)';
+  $('res').hidden=false;
+}
+$('again').onclick=function(){$('res').hidden=true;URL.revokeObjectURL($('ri').src)};
+$('sv').onclick=function(){
+  var a=document.createElement('a');a.href=URL.createObjectURL(result.blob);a.download=result.name;
+  document.body.appendChild(a);a.click();a.remove();$('rt').textContent='Tersimpan di folder Download.';
+};
+$('sh').onclick=async function(){
+  var f=new File([result.blob],result.name,{type:'image/jpeg'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(e){}}
+  else $('rt').textContent='Berbagi file tidak didukung. Pakai tombol Simpan.';
+};
+
+/* --- konverter --- */
+var dv=0;
+function pick(id,n,s){$(id).onchange=function(){var f=this.files[0];$(n).textContent=f?f.name:'Belum dipilih';$(s).classList.toggle('done',!!f);$('go').disabled=!($('img').files[0]&&$('vid').files[0])}}
+pick('img','n1','s1');pick('vid','n2','s2');
+$('vid').addEventListener('change',function(){
+  var f=this.files[0];if(!f)return;
+  var e=document.createElement('video'),u=URL.createObjectURL(f);e.preload='metadata';
+  e.onloadedmetadata=function(){dv=isFinite(e.duration)?e.duration:0;if(dv)$('ts').value=(Math.floor(dv*10)/10).toFixed(1);URL.revokeObjectURL(u)};
+  e.src=u;
+});
+$('go').onclick=async function(){
+  try{
+    var jf=$('img').files[0],vf=$('vid').files[0],sec=parseFloat($('ts').value);
+    if(!isFinite(sec)||sec<0)sec=0;if(dv&&sec>dv)sec=dv;
+    var blob=build(new Uint8Array(await jf.arrayBuffer()),new Uint8Array(await vf.arrayBuffer()),Math.round(sec*1e6));
+    finish(blob,jf.name.replace(/\.[^.]+$/,'')+'_motion.jpg',jf);
+  }catch(e){alert('Gagal: '+(e.message||e))}
+};
+
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
+start();
+})();
+</script>
+</body>
+</html>
