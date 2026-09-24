@@ -52,7 +52,10 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 .big:disabled{opacity:.4}.big.alt{background:#1A242D;color:#EAF0F4;border:2px solid #2A3844}
 #res{position:fixed;inset:0;background:#0B1116;z-index:5;display:flex;flex-direction:column;gap:12px;padding:calc(16px + env(safe-area-inset-top,0)) 16px calc(16px + env(safe-area-inset-bottom,0))}
 #ri{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:12px;background:#000}
-#rt{margin:0;text-align:center;color:#93A4B1}
+#rt{margin:0;text-align:center;color:#93A4B1;min-height:1.4em}
+#rv{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:12px;background:#000}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px}
+#res .big{padding:12px;font-size:.95rem}
 </style>
 </head>
 <body>
@@ -88,9 +91,10 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 
 <div id="res" hidden>
 <img id="ri" alt="Hasil">
+<video id="rv" controls playsinline loop hidden></video>
 <p id="rt"></p>
-<button class="big" id="sv">Simpan</button>
-<button class="big alt" id="sh">Bagikan / kirim ke Google Foto</button>
+<div class="g2"><button class="big" id="sv">Simpan foto gerak</button><button class="big alt" id="sh">Bagikan foto gerak</button></div>
+<div class="g2"><button class="big" id="mp">Buat MP4 Live</button><button class="big alt" id="mps" hidden>Bagikan MP4</button></div>
 <button class="big alt" id="again">Kembali</button>
 </div>
 
@@ -260,7 +264,7 @@ shot.onclick=async function(){
     var smp=S.map(function(x,n){var nx=S[n+1],d=nx?Math.max(1,nx.ts-x.ts):avg;total+=d;return{d:x.d,key:x.key,dur:d}});
     var mp4=new Uint8Array(await mux(smp,cv.width,cv.height,desc).arrayBuffer());
     var secs=total/1e6,note='video '+secs.toFixed(1)+' dtk'+(secs<st.dur-0.7?' (buffer belum penuh)':'');
-    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,Math.max(0,Math.min(total-1000,tEnd-S[0].ts))),'MOTION_'+Date.now()+'.jpg',still,note);
+    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,Math.max(0,Math.min(total-1000,tEnd-S[0].ts))),'MOTION_'+Date.now()+'.jpg',still,note,new Blob([mp4],{type:'video/mp4'}));
     say('');
   }catch(e){if(hasTorch)await torch(false);say('Gagal: '+(e.message||e))}
   busy=false;shot.disabled=false;
@@ -293,13 +297,14 @@ function build(jpg,mp4,tsUs){
 }
 
 /* ---------- hasil ---------- */
-function finish(blob,name,prev,note){
-  result={blob:blob,name:name};
+function finish(blob,name,prev,note,mp4){
+  result={blob:blob,name:name,mp4:mp4,still:prev||blob,live:null};
+  $('rv').pause();$('rv').removeAttribute('src');$('rv').hidden=true;$('ri').hidden=false;$('mps').hidden=true;
   $('ri').src=URL.createObjectURL(prev||blob);
   $('rt').textContent='Motion photo siap ('+(blob.size/1048576).toFixed(1)+' MB'+(note?' · '+note:'')+')';
   $('res').hidden=false;
 }
-$('again').onclick=function(){$('res').hidden=true;URL.revokeObjectURL($('ri').src)};
+$('again').onclick=function(){$('rv').pause();$('res').hidden=true;URL.revokeObjectURL($('ri').src)};
 $('sv').onclick=function(){
   var a=document.createElement('a');a.href=URL.createObjectURL(result.blob);a.download=result.name;
   document.body.appendChild(a);a.click();a.remove();$('rt').textContent='Tersimpan di folder Download.';
@@ -308,6 +313,66 @@ $('sh').onclick=async function(){
   var f=new File([result.blob],result.name,{type:'image/jpeg'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(e){}}
   else $('rt').textContent='Berbagi file tidak didukung. Pakai tombol Simpan.';
+};
+
+/* ---------- MP4 seperti Live Photo: klip lalu foto ditahan di akhir ---------- */
+async function exportLive(mp4,still,hold,onp){
+  if(!('VideoEncoder'in window))throw new Error('Browser belum mendukung ekspor MP4. Pakai Chrome Android terbaru.');
+  var vd=document.createElement('video'),url=URL.createObjectURL(mp4);
+  vd.muted=true;vd.playsInline=true;vd.preload='auto';vd.src=url;
+  await new Promise(function(ok,no){vd.onloadeddata=ok;vd.onerror=function(){no(new Error('Video tidak bisa diputar di browser ini.'))}});
+  var W=vd.videoWidth&~1,H=vd.videoHeight&~1,fps=30,c=document.createElement('canvas');c.width=W;c.height=H;
+  var x=c.getContext('2d'),bm=await createImageBitmap(still),br=Math.min(25e6,Math.round(W*H*fps*.12)),cfg=null,out=[],dsc=null,i;
+  var codecs=['avc1.640033','avc1.4d0033','avc1.420033'];
+  for(i=0;i<codecs.length&&!cfg;i++){
+    var t={codec:codecs[i],width:W,height:H,bitrate:br,framerate:fps,latencyMode:'realtime',avc:{format:'avc'},hardwareAcceleration:'prefer-hardware'};
+    try{if((await VideoEncoder.isConfigSupported(t)).supported)cfg=t}catch(e){}
+  }
+  if(!cfg)throw new Error('Encoder tidak mendukung ukuran video ini.');
+  var e=new VideoEncoder({output:function(ch,m){
+    if(m&&m.decoderConfig&&m.decoderConfig.description&&!dsc){var d=m.decoderConfig.description;dsc=new Uint8Array(d instanceof ArrayBuffer?d.slice(0):d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength))}
+    var b=new Uint8Array(ch.byteLength);ch.copyTo(b);out.push({ts:ch.timestamp,key:ch.type==='key',d:b});
+  },error:function(er){console.error(er)}});
+  e.configure(cfg);
+  var lastKey=-1e9,lastT=-1;
+  function enq(t,force){var key=force||t-lastKey>=500000;if(key)lastKey=t;var f=new VideoFrame(c,{timestamp:t});e.encode(f,{keyFrame:key});f.close()}
+  await new Promise(function(done){
+    function cb(now,meta){
+      var t=Math.round(meta.mediaTime*1e6);
+      if(t>lastT&&e.encodeQueueSize<8){x.drawImage(vd,0,0,W,H);enq(t,false);lastT=t}
+      if(onp)onp(vd.currentTime/vd.duration);
+      if(!vd.ended)vd.requestVideoFrameCallback(cb);
+    }
+    vd.onended=function(){setTimeout(done,150)};
+    vd.requestVideoFrameCallback(cb);
+    vd.play().catch(function(){done()});
+  });
+  var fd=Math.round(1e6/fps),n=Math.round(hold*fps),sc=Math.max(W/bm.width,H/bm.height),dw=bm.width*sc,dh=bm.height*sc;
+  x.drawImage(bm,(W-dw)/2,(H-dh)/2,dw,dh);bm.close();
+  for(i=1;i<=n;i++){while(e.encodeQueueSize>4)await sleep(5);enq(lastT+i*fd,i===1)}
+  await e.flush();e.close();URL.revokeObjectURL(url);
+  if(out.length<2||!dsc)throw new Error('Gagal membuat MP4.');
+  var S=out.map(function(o,k){var nx=out[k+1];return{d:o.d,key:o.key,dur:nx?Math.max(1,nx.ts-o.ts):fd}});
+  return mux(S,W,H,dsc);
+}
+$('mp').onclick=async function(){
+  var b=this;b.disabled=true;
+  try{
+    $('rt').textContent='Membuat MP4… 0% (biarkan layar menyala)';
+    var lv=await exportLive(result.mp4,result.still,1.2,function(p){$('rt').textContent='Membuat MP4… '+Math.min(99,Math.round(p*100))+'% (biarkan layar menyala)'});
+    result.live=lv;
+    $('rv').src=URL.createObjectURL(lv);$('rv').hidden=false;$('ri').hidden=true;$('rv').play().catch(function(){});
+    $('mps').hidden=false;
+    var a=document.createElement('a');a.href=URL.createObjectURL(lv);a.download=result.name.replace(/\.jpg$/i,'')+'_live.mp4';
+    document.body.appendChild(a);a.click();a.remove();
+    $('rt').textContent='MP4 Live tersimpan di Download ('+(lv.size/1048576).toFixed(1)+' MB)';
+  }catch(er){$('rt').textContent='Gagal: '+(er.message||er)}
+  b.disabled=false;
+};
+$('mps').onclick=async function(){
+  var f=new File([result.live],result.name.replace(/\.jpg$/i,'')+'_live.mp4',{type:'video/mp4'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]})}catch(e){}}
+  else $('rt').textContent='Berbagi file tidak didukung. MP4 sudah ada di folder Download.';
 };
 
 /* ---------- konverter ---------- */
@@ -341,7 +406,7 @@ $('go').onclick=async function(){
     if(!vbytes)vbytes=new Uint8Array(await $('vid').files[0].arrayBuffer());
     if(!isFinite(sec)||sec<0)sec=0;if(dv&&sec>dv)sec=dv;
     var blob=build(new Uint8Array(await jf.arrayBuffer()),vbytes,Math.round(sec*1e6));
-    finish(blob,jf.name.replace(/\.[^.]+$/,'')+'_motion.jpg',jf,dv?'video '+dv.toFixed(1)+' dtk, foto di detik '+sec.toFixed(1):'');
+    finish(blob,jf.name.replace(/\.[^.]+$/,'')+'_motion.jpg',jf,dv?'video '+dv.toFixed(1)+' dtk, foto di detik '+sec.toFixed(1):'',new Blob([vbytes],{type:'video/mp4'}));
   }catch(e){alert('Gagal: '+(e.message||e))}
 };
 
