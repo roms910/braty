@@ -65,13 +65,14 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 <div id="panel">
 <div class="row"><span class="lbl">Rasio</span><div class="chips" id="asp"></div></div>
 <div class="row"><span class="lbl">Durasi</span><div class="chips" id="dch"></div><label class="dur"><input id="dur" type="number" inputmode="decimal" min="1" max="30" step="0.5" aria-label="Durasi video dalam detik"><span>dtk</span></label></div>
-<div class="ctl"><button class="pill" id="fl" aria-pressed="false">Flash mati</button><div id="ring"><button id="shot" aria-label="Jepret" disabled></button></div><button class="pill" id="gear">Kualitas</button></div>
+<div class="ctl"><button class="pill" id="fl" aria-pressed="false">Flash mati</button><div id="ring"><button id="shot" aria-label="Jepret" disabled></button></div><button class="pill" id="gear">Atur</button></div>
 </div>
 <div id="set" hidden><div>
-<h2>Kualitas video</h2>
+<h2>Pengaturan</h2>
 <div class="row"><span class="lbl" style="width:auto">Resolusi</span><div class="chips" id="rch"></div></div>
 <div class="row"><span class="lbl" style="width:auto">FPS</span><div class="chips" id="fch"></div></div>
-<p>Maks memakai resolusi tertinggi kamera HP. Resolusi dan FPS lebih tinggi butuh HP yang kuat dan file lebih besar.</p>
+<div class="row"><span class="lbl" style="width:auto">Posisi foto</span><div class="chips" id="qch"></div></div>
+<p>Posisi foto = seberapa jauh foto muncul sebelum akhir video. Bila 35%, sebagian durasi direkam setelah jepret, jadi tahan HP sebentar. Maks memakai resolusi tertinggi kamera HP. Resolusi dan FPS lebih tinggi butuh HP yang kuat dan file lebih besar.</p>
 <button class="big" id="apply">Terapkan</button>
 </div></div>
 </section>
@@ -80,6 +81,7 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 <label class="slot" id="s1"><input type="file" id="img" accept="image/jpeg"><b>1. Pilih foto JPG</b><span id="n1">Belum dipilih</span></label>
 <label class="slot" id="s2"><input type="file" id="vid" accept="video/mp4"><b>2. Pilih video MP4</b><span id="n2">Belum dipilih</span></label>
 <div class="fld"><label for="ts">Detik foto muncul di dalam video</label><input id="ts" type="number" min="0" step="any" inputmode="decimal" value="0"></div>
+<div class="row" style="margin-bottom:16px"><div class="chips" id="pch"></div></div>
 <button class="big" id="go" disabled>Buat Motion Photo</button>
 </section>
 </div>
@@ -97,7 +99,7 @@ section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative
 var $=function(i){return document.getElementById(i)};
 var A={'3:4':3/4,'4:3':4/3,'1:1':1,'9:16':9/16,'16:9':16/9,'Full':0};
 var R={'720':[1280,720],'1080':[1920,1080],'max':[3840,2160]};
-var st={ar:'3:4',res:'1080',fps:30,dur:8};
+var st={ar:'3:4',res:'1080',fps:30,dur:8,q:0};
 try{Object.assign(st,JSON.parse(localStorage.getItem('mc2')||'{}'))}catch(e){}
 function save(){try{localStorage.setItem('mc2',JSON.stringify(st))}catch(e){}}
 var v=$('v'),msg=$('msg'),shot=$('shot'),cv=document.createElement('canvas'),g=cv.getContext('2d');
@@ -122,6 +124,7 @@ $('fl').onclick=function(){flash=!flash;this.classList.toggle('on',flash);this.s
 $('gear').onclick=function(){
   mk($('rch'),[{t:'720p',v:'720'},{t:'1080p',v:'1080'},{t:'Maks',v:'max'}],function(){return st.res},function(x){st.res=x});
   mk($('fch'),[24,30,60].map(function(n){return{t:n,v:n}}),function(){return st.fps},function(x){st.fps=x});
+  mk($('qch'),[{t:'Akhir',v:0},{t:'15% dari akhir',v:15},{t:'35% dari akhir',v:35},{t:'50% dari akhir',v:50}],function(){return st.q},function(x){st.q=x});
   $('set').hidden=false;
 };
 $('apply').onclick=function(){$('set').hidden=true;save();startCam()};
@@ -244,19 +247,20 @@ shot.onclick=async function(){
     }
     if(!still)still=await grab();
     if(flash&&hasTorch)await torch(false);
-    await sleep(200);
+    var post=st.dur*(st.q||0)/100,tStop=tEnd+post*1e6;
+    for(var w=post;w>0.05;w-=0.25){say('Tahan HP… '+w.toFixed(1)+' dtk');await sleep(250)}
+    await sleep(250);
     say('Memproses video…');
-    var D=st.dur*1e6,snap=ring.filter(function(x){return x.ts<=tEnd}),idx=-1,i;
+    var pre=(st.dur-post)*1e6,snap=ring.filter(function(x){return x.ts<=tStop}),idx=-1,i;
     if(snap.length<3)throw new Error('Buffer belum terisi, coba lagi.');
-    var last=snap[snap.length-1].ts;
-    for(i=snap.length-1;i>=0;i--){if(snap[i].key&&snap[i].ts<=last-D){idx=i;break}}
+    for(i=snap.length-1;i>=0;i--){if(snap[i].key&&snap[i].ts<=tEnd-pre){idx=i;break}}
     if(idx<0)idx=snap.findIndex(function(x){return x.key});
     if(idx<0||snap.length-idx<3)throw new Error('Buffer belum terisi, coba lagi.');
     var S=snap.slice(idx),avg=Math.max(1,Math.round((S[S.length-1].ts-S[0].ts)/(S.length-1))),total=0;
     var smp=S.map(function(x,n){var nx=S[n+1],d=nx?Math.max(1,nx.ts-x.ts):avg;total+=d;return{d:x.d,key:x.key,dur:d}});
     var mp4=new Uint8Array(await mux(smp,cv.width,cv.height,desc).arrayBuffer());
     var secs=total/1e6,note='video '+secs.toFixed(1)+' dtk'+(secs<st.dur-0.7?' (buffer belum penuh)':'');
-    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,Math.max(0,total-1000)),'MOTION_'+Date.now()+'.jpg',still,note);
+    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,Math.max(0,Math.min(total-1000,tEnd-S[0].ts))),'MOTION_'+Date.now()+'.jpg',still,note);
     say('');
   }catch(e){if(hasTorch)await torch(false);say('Gagal: '+(e.message||e))}
   busy=false;shot.disabled=false;
@@ -307,25 +311,41 @@ $('sh').onclick=async function(){
 };
 
 /* ---------- konverter ---------- */
+function mp4Dur(u){
+  var d=new DataView(u.buffer,u.byteOffset,u.byteLength);
+  function find(a,b,t){var p=a;while(p+8<=b){var n=d.getUint32(p),h=8;if(n===1){n=d.getUint32(p+8)*4294967296+d.getUint32(p+12);h=16}if(n===0)n=b-p;
+    if(String.fromCharCode(u[p+4],u[p+5],u[p+6],u[p+7])===t)return[p+h,p+n];if(n<8)break;p+=n}return null}
+  var mo=find(0,u.length,'moov');if(!mo)return 0;var mh=find(mo[0],mo[1],'mvhd');if(!mh)return 0;
+  var o=mh[0],ts,du;
+  if(u[o]===1){ts=d.getUint32(o+20);du=d.getUint32(o+24)*4294967296+d.getUint32(o+28)}else{ts=d.getUint32(o+12);du=d.getUint32(o+16)}
+  return ts?du/ts:0;
+}
 var dv=0;
 function pick(id,n,s){$(id).onchange=function(){var f=this.files[0];$(n).textContent=f?f.name:'Belum dipilih';$(s).classList.toggle('done',!!f);$('go').disabled=!($('img').files[0]&&$('vid').files[0])}}
 pick('img','n1','s1');pick('vid','n2','s2');
-$('vid').addEventListener('change',function(){
-  var f=this.files[0];if(!f)return;
-  var e=document.createElement('video'),u=URL.createObjectURL(f);e.preload='metadata';
-  e.onloadedmetadata=function(){dv=isFinite(e.duration)?e.duration:0;if(dv)$('ts').value=Math.max(0,dv-0.001).toFixed(3);URL.revokeObjectURL(u)};
-  e.src=u;
+var vbytes=null,cq=0;
+function setPos(q){
+  cq=q;mk($('pch'),[{t:'Akhir',v:0},{t:'15% dari akhir',v:15},{t:'35% dari akhir',v:35},{t:'50% dari akhir',v:50},{t:'Awal',v:100}],function(){return cq},setPos);
+  if(dv>0)$('ts').value=(q===0?Math.max(0,dv-0.001):dv*(1-q/100)).toFixed(3);
+}
+$('vid').addEventListener('change',async function(){
+  var f=this.files[0];vbytes=null;dv=0;if(!f)return;
+  try{vbytes=new Uint8Array(await f.arrayBuffer());dv=mp4Dur(vbytes)}catch(e){}
+  if(!dv){await new Promise(function(ok){var e=document.createElement('video'),u=URL.createObjectURL(f);e.preload='metadata';
+    e.onloadedmetadata=function(){dv=isFinite(e.duration)?e.duration:0;URL.revokeObjectURL(u);ok()};e.onerror=function(){URL.revokeObjectURL(u);ok()};e.src=u})}
+  setPos(cq);
 });
 $('go').onclick=async function(){
   try{
-    var jf=$('img').files[0],vf=$('vid').files[0],sec=parseFloat($('ts').value);
+    var jf=$('img').files[0],sec=parseFloat($('ts').value);
+    if(!vbytes)vbytes=new Uint8Array(await $('vid').files[0].arrayBuffer());
     if(!isFinite(sec)||sec<0)sec=0;if(dv&&sec>dv)sec=dv;
-    var blob=build(new Uint8Array(await jf.arrayBuffer()),new Uint8Array(await vf.arrayBuffer()),Math.round(sec*1e6));
-    finish(blob,jf.name.replace(/\.[^.]+$/,'')+'_motion.jpg',jf);
+    var blob=build(new Uint8Array(await jf.arrayBuffer()),vbytes,Math.round(sec*1e6));
+    finish(blob,jf.name.replace(/\.[^.]+$/,'')+'_motion.jpg',jf,dv?'video '+dv.toFixed(1)+' dtk, foto di detik '+sec.toFixed(1):'');
   }catch(e){alert('Gagal: '+(e.message||e))}
 };
 
-drawAsp();setDur(st.dur);
+drawAsp();setDur(st.dur);setPos(0);
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
 startCam();
 })();
