@@ -8,33 +8,48 @@
 <link rel="icon" href="icon-192.png">
 <title>Motion Cam</title>
 <style>
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;background:#0B1116;color:#EAF0F4;font:16px/1.4 system-ui,sans-serif;overflow:hidden}
 #app{position:fixed;inset:0;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
-nav{display:flex;gap:6px;padding:10px 14px}
-nav button,.seg button,#fl{font:inherit;font-weight:700;color:#EAF0F4;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:8px 16px}
-nav button{flex:1}
-nav button.on,.seg button.on,#fl.on{background:#5B7CFF;border-color:#5B7CFF;color:#0B1116}
+button,input{font:inherit;color:inherit}
 button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
-section{flex:1;position:relative;min-height:0}
-#cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-#msg{position:absolute;top:10px;left:14px;right:14px;text-align:center;font-weight:600;text-shadow:0 1px 4px #000}
-#bar{position:absolute;left:0;right:0;bottom:0;padding:24px 14px calc(18px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;align-items:center;gap:16px;background:linear-gradient(transparent,#000A)}
-.row{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
-.seg{display:flex;gap:6px}
-#shot{width:78px;height:78px;border-radius:50%;background:#fff;border:6px solid #0B1116;box-shadow:0 0 0 4px #fff;cursor:pointer}
-#shot:disabled{opacity:.4}
-#conv{padding:8px 16px;overflow:auto}
+nav{display:flex;padding:8px 14px;gap:4px}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:8px;font-weight:700;color:#93A4B1}
+nav button.on{color:#EAF0F4;border-color:#5B7CFF}
+section{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+#stage{flex:1;min-height:0;position:relative;display:grid;place-items:center;padding:6px 14px}
+#frame{position:relative;overflow:hidden;border-radius:16px;background:#000;box-shadow:0 0 0 2px #2A3844}
+#frame video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#info{position:absolute;top:12px;left:0;right:0;text-align:center;font-size:.8rem;color:#93A4B1}
+#msg{position:absolute;bottom:10px;left:14px;right:14px;text-align:center;font-weight:600;text-shadow:0 1px 4px #000}
+#panel{background:#101922;border-radius:22px 22px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;gap:12px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chip,.pill{flex:none;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:6px 14px;font-weight:700;font-size:.92rem;cursor:pointer}
+.chip.on,.pill.on{background:#5B7CFF;border-color:#5B7CFF;color:#0B1116}
+.row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.lbl{font-size:.8rem;color:#93A4B1;flex:none;width:44px}
+.dur{flex:none;display:flex;align-items:center;gap:6px;background:#1A242D;border:2px solid #2A3844;border-radius:999px;padding:2px 12px}
+.dur input{width:48px;background:none;border:0;text-align:center;font-weight:800;padding:4px 0;-moz-appearance:textfield}
+.dur span{font-size:.85rem;color:#93A4B1}
+.ctl{display:flex;align-items:center;justify-content:space-between}
+.ctl .pill{width:104px;text-align:center}
+#ring{--p:0;width:88px;height:88px;border-radius:50%;padding:6px;background:conic-gradient(#5B7CFF calc(var(--p)*360deg),#2A3844 0)}
+#shot{width:100%;height:100%;border-radius:50%;background:#fff;border:5px solid #101922;cursor:pointer}
+#shot:active{background:#C8D3FF}#shot:disabled{opacity:.45}
+#set{position:absolute;inset:0;background:#000B;display:flex;align-items:flex-end;z-index:3}
+#set[hidden],#res[hidden]{display:none}
+#set>div{width:100%;background:#101922;border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0));display:flex;flex-direction:column;gap:14px}
+#set h2{margin:0;font-size:1.1rem}#set p{margin:0;color:#93A4B1;font-size:.85rem}
+#conv{padding:8px 16px;overflow:auto;display:block}
 .slot{position:relative;display:block;background:#16212A;border:2px solid #2A3844;border-radius:12px;padding:14px 16px;margin-bottom:12px}
 .slot.done{border-color:#5B7CFF}
 .slot input{position:absolute;inset:0;width:100%;height:100%;opacity:0}
 .slot b{display:block}.slot span{color:#93A4B1;font-size:.9rem;word-break:break-all}
 .fld{margin:16px 0}.fld label{display:block;font-weight:700;margin-bottom:6px}
-.fld input{width:100%;font:inherit;color:#EAF0F4;background:#16212A;border:2px solid #2A3844;border-radius:12px;padding:12px}
-.big{width:100%;font:inherit;font-weight:800;font-size:1.05rem;color:#0B1116;background:#5B7CFF;border:0;border-radius:12px;padding:15px}
+.fld input{width:100%;background:#16212A;border:2px solid #2A3844;border-radius:12px;padding:12px}
+.big{width:100%;font-weight:800;font-size:1.05rem;color:#0B1116;background:#5B7CFF;border:0;border-radius:12px;padding:15px}
 .big:disabled{opacity:.4}.big.alt{background:#1A242D;color:#EAF0F4;border:2px solid #2A3844}
 #res{position:fixed;inset:0;background:#0B1116;z-index:5;display:flex;flex-direction:column;gap:12px;padding:calc(16px + env(safe-area-inset-top,0)) 16px calc(16px + env(safe-area-inset-bottom,0))}
-#res[hidden]{display:none}
 #ri{flex:1;min-height:0;width:100%;object-fit:contain;border-radius:12px;background:#000}
 #rt{margin:0;text-align:center;color:#93A4B1}
 </style>
@@ -44,13 +59,19 @@ section{flex:1;position:relative;min-height:0}
 <nav><button id="t1" class="on">Kamera</button><button id="t2">Konverter</button></nav>
 
 <section id="cam">
-<video id="v" playsinline muted autoplay></video>
-<div id="msg">Memulai kamera…</div>
-<div id="bar">
-<div class="row"><div class="seg" id="dsel"><button data-d="1">1 dtk</button><button data-d="2" class="on">2 dtk</button><button data-d="3">3 dtk</button></div>
-<button id="fl" aria-pressed="false">Flash: mati</button></div>
-<button id="shot" aria-label="Jepret" disabled></button>
+<div id="stage"><div id="frame"><video id="v" playsinline muted autoplay></video></div><div id="info"></div><div id="msg">Memulai kamera…</div></div>
+<div id="panel">
+<div class="row"><span class="lbl">Rasio</span><div class="chips" id="asp"></div></div>
+<div class="row"><span class="lbl">Durasi</span><div class="chips" id="dch"></div><label class="dur"><input id="dur" type="number" inputmode="decimal" min="1" max="15" step="0.5" aria-label="Durasi video dalam detik"><span>dtk</span></label></div>
+<div class="ctl"><button class="pill" id="fl" aria-pressed="false">Flash mati</button><div id="ring"><button id="shot" aria-label="Jepret" disabled></button></div><button class="pill" id="gear">Kualitas</button></div>
 </div>
+<div id="set" hidden><div>
+<h2>Kualitas video</h2>
+<div class="row"><span class="lbl" style="width:auto">Resolusi</span><div class="chips" id="rch"></div></div>
+<div class="row"><span class="lbl" style="width:auto">FPS</span><div class="chips" id="fch"></div></div>
+<p>Maks memakai resolusi tertinggi kamera HP. Resolusi dan FPS lebih tinggi butuh HP yang kuat dan file lebih besar.</p>
+<button class="big" id="apply">Terapkan</button>
+</div></div>
 </section>
 
 <section id="conv" hidden>
@@ -72,81 +93,161 @@ section{flex:1;position:relative;min-height:0}
 <script>
 (function(){
 var $=function(i){return document.getElementById(i)};
-var FPS=15,W=960,dur=2,flash=false,busy=false,ring=[],ticking=false,track,ic,result=null;
-var v=$('v'),msg=$('msg'),shot=$('shot');
+var A={'3:4':3/4,'4:3':4/3,'1:1':1,'9:16':9/16,'16:9':16/9,'Full':0};
+var R={'720':[1280,720],'1080':[1920,1080],'max':[3840,2160]};
+var st={ar:'3:4',res:'1080',fps:30,dur:3};
+try{Object.assign(st,JSON.parse(localStorage.getItem('mc')||'{}'))}catch(e){}
+function save(){try{localStorage.setItem('mc',JSON.stringify(st))}catch(e){}}
+var v=$('v'),msg=$('msg'),shot=$('shot'),cv=document.createElement('canvas'),g=cv.getContext('2d');
+var stream,track,ic,enc,desc,cr,ring=[],lastKey=-1e9,busy=false,flash=false,looping=false,result=null;
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function say(t){msg.textContent=t||''}
 
-/* --- tab --- */
-function tab(n){$('cam').hidden=n!==1;$('conv').hidden=n!==2;$('t1').classList.toggle('on',n===1);$('t2').classList.toggle('on',n===2)}
+/* ---------- UI ---------- */
+function mk(el,list,sel,cb){el.innerHTML='';list.forEach(function(o){var b=document.createElement('button');b.textContent=o.t;b.className='chip'+(String(o.v)===String(sel())?' on':'');b.onclick=function(){cb(o.v);mk(el,list,sel,cb)};el.appendChild(b)})}
+function tab(n){$('cam').hidden=n!==1;$('conv').hidden=n!==2;$('t1').classList.toggle('on',n===1);$('t2').classList.toggle('on',n===2);if(n===1)fit()}
 $('t1').onclick=function(){tab(1)};$('t2').onclick=function(){tab(2)};
+function fit(){
+  var s=$('stage'),w=s.clientWidth-28,h=s.clientHeight-12,ar=A[st.ar]||(v.videoWidth/v.videoHeight)||.75;
+  if(w<=0||h<=0)return;
+  var fh=w/ar,fw=w;if(fh>h){fh=h;fw=h*ar}
+  $('frame').style.width=fw+'px';$('frame').style.height=fh+'px';
+}
+function drawAsp(){mk($('asp'),Object.keys(A).map(function(k){return{t:k,v:k}}),function(){return st.ar},function(x){st.ar=x;save();fit();setupEnc()})}
+function setDur(x){x=parseFloat(x);if(!isFinite(x))x=3;x=Math.min(15,Math.max(1,x));st.dur=x;$('dur').value=x;save();mk($('dch'),[2,3,5,10,15].map(function(n){return{t:n,v:n}}),function(){return st.dur},setDur)}
+$('dur').onchange=function(){setDur(this.value)};
+$('fl').onclick=function(){flash=!flash;this.classList.toggle('on',flash);this.setAttribute('aria-pressed',flash);this.textContent='Flash '+(flash?'nyala':'mati')};
+$('gear').onclick=function(){
+  mk($('rch'),[{t:'720p',v:'720'},{t:'1080p',v:'1080'},{t:'Maks',v:'max'}],function(){return st.res},function(x){st.res=x});
+  mk($('fch'),[24,30,60].map(function(n){return{t:n,v:n}}),function(){return st.fps},function(x){st.fps=x});
+  $('set').hidden=false;
+};
+$('apply').onclick=function(){$('set').hidden=true;save();startCam()};
+window.addEventListener('resize',fit);v.addEventListener('resize',function(){fit();setupEnc()});
 
-/* --- durasi & flash --- */
-$('dsel').onclick=function(e){var b=e.target.closest('button');if(!b)return;dur=+b.dataset.d;
-  [].forEach.call($('dsel').children,function(x){x.classList.toggle('on',x===b)})};
-$('fl').onclick=function(){flash=!flash;this.classList.toggle('on',flash);this.setAttribute('aria-pressed',flash);this.textContent='Flash: '+(flash?'nyala':'mati')};
-
-/* --- kamera + buffer bingkai (pre-roll) --- */
-async function start(){
+/* ---------- kamera + encoder H.264 (buffer terenkode) ---------- */
+function crop(w,h,ar){
+  if(!ar)return{x:0,y:0,w:w,h:h};
+  var cw,ch;if(w/h>ar){cw=Math.round(h*ar);ch=h}else{cw=w;ch=Math.round(w/ar)}
+  return{x:(w-cw)>>1,y:(h-ch)>>1,w:cw,h:ch};
+}
+async function startCam(){
+  shot.disabled=true;say('Memulai kamera…');ring=[];
   try{
-    var s=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});
-    v.srcObject=s;track=s.getVideoTracks()[0];
-    if(window.ImageCapture)ic=new ImageCapture(track);
-    say('');shot.disabled=false;
-    setInterval(tick,1000/FPS);
+    if(stream)stream.getTracks().forEach(function(t){t.stop()});
+    var r=R[st.res]||R['1080'];
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:r[0]},height:{ideal:r[1]},frameRate:{ideal:st.fps}}});
+    track=stream.getVideoTracks()[0];ic=window.ImageCapture?new ImageCapture(track):null;
+    v.srcObject=stream;
+    await new Promise(function(ok){v.onloadedmetadata=ok});
+    try{await v.play()}catch(e){}
+    fit();await setupEnc();
+    if(!looping){looping=true;v.requestVideoFrameCallback(loop)}
   }catch(e){say('Kamera tidak bisa dibuka. Izinkan akses kamera lalu muat ulang.')}
 }
-async function tick(){
-  if(busy||ticking||v.readyState<2)return;ticking=true;
-  try{
-    var b=await createImageBitmap(v,{resizeWidth:W,resizeQuality:'low'}),t=performance.now();
-    ring.push({t:t,b:b});
-    while(ring.length&&t-ring[0].t>3300)ring.shift().b.close();
-  }catch(e){}
-  ticking=false;
-}
-function grab(){
-  var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;
-  c.getContext('2d').drawImage(v,0,0);
-  return new Promise(function(r){c.toBlob(r,'image/jpeg',.92)});
-}
-async function encode(frames){
-  var mime=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4'].find(function(m){return MediaRecorder.isTypeSupported(m)});
-  if(!mime)throw new Error('Browser belum bisa merekam MP4. Pakai Chrome Android terbaru.');
-  var c=document.createElement('canvas');c.width=frames[0].b.width&~1;c.height=frames[0].b.height&~1;
-  var g=c.getContext('2d');g.drawImage(frames[0].b,0,0,c.width,c.height);
-  var cs=c.captureStream(FPS),rec=new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:4e6}),ch=[];
-  rec.ondataavailable=function(e){if(e.data.size)ch.push(e.data)};
-  var fin=new Promise(function(r){rec.onstop=r});
-  rec.start();
-  var t0=frames[0].t,s0=performance.now();
-  for(var i=0;i<frames.length;i++){
-    var w=(frames[i].t-t0)-(performance.now()-s0);if(w>0)await sleep(w);
-    g.drawImage(frames[i].b,0,0,c.width,c.height);
+async function setupEnc(){
+  if(!('VideoEncoder'in window)){say('Browser belum mendukung perekaman. Pakai Chrome Android terbaru. Konverter tetap bisa dipakai.');return}
+  if(!v.videoWidth)return;
+  shot.disabled=true;ring=[];desc=null;
+  try{if(enc&&enc.state!=='closed')enc.close()}catch(e){}
+  enc=null;
+  cr=crop(v.videoWidth,v.videoHeight,A[st.ar]);
+  cv.width=cr.w&~1;cv.height=cr.h&~1;
+  var fps=st.fps,br=Math.min(40e6,Math.round(cv.width*cv.height*fps*.12)),cfg=null;
+  var codecs=['avc1.640033','avc1.4d0033','avc1.420033'];
+  for(var i=0;i<codecs.length&&!cfg;i++){
+    var t={codec:codecs[i],width:cv.width,height:cv.height,bitrate:br,framerate:fps,latencyMode:'realtime',avc:{format:'avc'},hardwareAcceleration:'prefer-hardware'};
+    try{var s=await VideoEncoder.isConfigSupported(t);if(s.supported)cfg=t}catch(e){}
   }
-  await sleep(1000/FPS);rec.stop();await fin;cs.getTracks().forEach(function(t){t.stop()});
-  return new Blob(ch,{type:'video/mp4'});
+  if(!cfg){say('Resolusi ini tidak didukung encoder. Turunkan resolusi di Kualitas.');return}
+  var e2=new VideoEncoder({output:onChunk,error:function(x){say('Encoder error: '+x.message)}});
+  e2.configure(cfg);lastKey=-1e9;enc=e2;
+  var set=track.getSettings();
+  $('info').textContent=cv.width+'×'+cv.height+' · '+Math.round(set.frameRate||fps)+' fps';
+  say('');shot.disabled=false;
 }
+function loop(now){
+  v.requestVideoFrameCallback(loop);
+  if(!enc||enc.state!=='configured'||enc.encodeQueueSize>4||!cr)return;
+  try{
+    g.drawImage(v,cr.x,cr.y,cr.w,cr.h,0,0,cv.width,cv.height);
+    var ts=Math.round(now*1000),key=ts-lastKey>=500000;if(key)lastKey=ts;
+    var f=new VideoFrame(cv,{timestamp:ts});enc.encode(f,{keyFrame:key});f.close();
+  }catch(e){}
+}
+function onChunk(c,m){
+  if(m&&m.decoderConfig&&m.decoderConfig.description){var d=m.decoderConfig.description;desc=new Uint8Array(d instanceof ArrayBuffer?d.slice(0):d.buffer.slice(d.byteOffset,d.byteOffset+d.byteLength))}
+  var b=new Uint8Array(c.byteLength);c.copyTo(b);
+  ring.push({ts:c.timestamp,key:c.type==='key',d:b});
+  var last=c.timestamp;
+  while(ring.length&&ring[0].ts<last-17e6)ring.shift();
+  while(ring.length&&!ring[0].key)ring.shift();
+  var span=ring.length?(last-ring[0].ts)/1e6:0;
+  $('ring').style.setProperty('--p',Math.min(1,span/st.dur));
+}
+
+/* ---------- MP4 muxer (satu track H.264) ---------- */
+function cat(a){var n=0;a.forEach(function(x){n+=x.length});var o=new Uint8Array(n),p=0;a.forEach(function(x){o.set(x,p);p+=x.length});return o}
+function be(v,n){var a=new Uint8Array(n);for(var i=n-1;i>=0;i--){a[i]=v%256;v=Math.floor(v/256)}return a}
+function str(s){return Uint8Array.from(s,function(c){return c.charCodeAt(0)})}
+function box(t){var c=cat([].slice.call(arguments,1));return cat([be(c.length+8,4),str(t),c])}
+function fb(t,ver,fl){return box.apply(null,[t,be(ver*16777216+fl,4)].concat([].slice.call(arguments,3)))}
+function mux(S,w,h,avcC){
+  var n=S.length,total=0,i;S.forEach(function(s){total+=s.dur});
+  var mvdur=Math.round(total/1000),ftyp=box('ftyp',str('isom'),be(512,4),str('isom'),str('iso2'),str('avc1'),str('mp41'));
+  var mat=cat([be(65536,4),be(0,4),be(0,4),be(0,4),be(65536,4),be(0,4),be(0,4),be(0,4),be(1073741824,4)]);
+  var szs=[be(0,4),be(n,4)],tt=[be(n,4)],ks=[];
+  S.forEach(function(s,i){szs.push(be(s.d.length,4));tt.push(be(1,4),be(s.dur,4));if(s.key)ks.push(be(i+1,4))});
+  function moov(off){
+    var mvhd=fb('mvhd',0,0,be(0,4),be(0,4),be(1000,4),be(mvdur,4),be(65536,4),be(256,2),be(0,10),mat,be(0,24),be(2,4));
+    var tkhd=fb('tkhd',0,3,be(0,4),be(0,4),be(1,4),be(0,4),be(mvdur,4),be(0,8),be(0,2),be(0,2),be(0,2),be(0,2),mat,be(w*65536,4),be(h*65536,4));
+    var mdhd=fb('mdhd',0,0,be(0,4),be(0,4),be(1e6,4),be(total,4),be(0x55C4,2),be(0,2));
+    var hdlr=fb('hdlr',0,0,be(0,4),str('vide'),be(0,12),str('Video\0'));
+    var avc1=box('avc1',be(0,6),be(1,2),be(0,16),be(w,2),be(h,2),be(0x480000,4),be(0x480000,4),be(0,4),be(1,2),be(0,32),be(24,2),be(0xFFFF,2),box('avcC',avcC));
+    var stbl=box('stbl',fb('stsd',0,0,be(1,4),avc1),fb.apply(null,['stts',0,0].concat(tt)),fb.apply(null,['stss',0,0,be(ks.length,4)].concat(ks)),
+      fb('stsc',0,0,be(1,4),be(1,4),be(n,4),be(1,4)),fb.apply(null,['stsz',0,0].concat(szs)),fb('stco',0,0,be(1,4),be(off,4)));
+    var minf=box('minf',fb('vmhd',0,1,be(0,8)),box('dinf',fb('dref',0,0,be(1,4),fb('url ',0,1))),stbl);
+    return box('moov',mvhd,box('trak',tkhd,box('mdia',mdhd,hdlr,minf)));
+  }
+  var off=ftyp.length+moov(0).length+8,data=0;S.forEach(function(s){data+=s.d.length});
+  return new Blob([ftyp,moov(off),be(data+8,4),str('mdat')].concat(S.map(function(s){return s.d})),{type:'video/mp4'});
+}
+
+/* ---------- foto ---------- */
+function toJpg(c){return new Promise(function(r){c.toBlob(r,'image/jpeg',.95)})}
+async function grab(){
+  var r=crop(v.videoWidth,v.videoHeight,A[st.ar]),c=document.createElement('canvas');c.width=r.w;c.height=r.h;
+  c.getContext('2d').drawImage(v,r.x,r.y,r.w,r.h,0,0,r.w,r.h);return toJpg(c);
+}
+async function cropStill(b){
+  var ar=A[st.ar];if(!ar)return b;
+  var bm=await createImageBitmap(b),r=crop(bm.width,bm.height,ar),c=document.createElement('canvas');
+  c.width=r.w;c.height=r.h;c.getContext('2d').drawImage(bm,r.x,r.y,r.w,r.h,0,0,r.w,r.h);bm.close();return toJpg(c);
+}
+async function torch(on){try{await track.applyConstraints({advanced:[{torch:on}]})}catch(e){}}
+
 shot.onclick=async function(){
-  if(busy)return;
-  var now=performance.now(),frames=ring.filter(function(f){return now-f.t<=dur*1000});
-  if(frames.length<3){say('Tunggu sebentar, buffer belum terisi.');return}
-  busy=true;shot.disabled=true;ring=[];say('Mengambil foto…');
+  if(busy||!ring.length||!desc)return;
+  var D=st.dur*1e6,snap=ring.slice(),last=snap[snap.length-1].ts,idx=-1,i;
+  for(i=snap.length-1;i>=0;i--){if(snap[i].key&&snap[i].ts<=last-D){idx=i;break}}
+  if(idx<0)idx=snap.findIndex(function(s){return s.key});
+  if(idx<0||snap.length-idx<3){say('Buffer belum terisi, tunggu sebentar.');return}
+  var S=snap.slice(idx);busy=true;shot.disabled=true;say('Mengambil foto…');
   try{
     var still=null;
-    if(ic){try{still=await ic.takePhoto(flash?{fillLightMode:'flash'}:{})}catch(e){}}
-    if(!still)still=await grab();
+    if(ic){try{still=await ic.takePhoto(flash?{fillLightMode:'flash'}:{});still=await cropStill(still)}catch(e){still=null}}
+    if(!still){if(flash){await torch(true);await sleep(250)}still=await grab();if(flash)await torch(false)}
     say('Memproses video…');
-    var mp4=await encode(frames);
-    var tsUs=Math.round((frames[frames.length-1].t-frames[0].t)*1000);
-    finish(build(new Uint8Array(await still.arrayBuffer()),new Uint8Array(await mp4.arrayBuffer()),tsUs),'MOTION_'+Date.now()+'.jpg',still);
+    var avg=Math.max(1,Math.round((S[S.length-1].ts-S[0].ts)/(S.length-1))),total=0;
+    var smp=S.map(function(s,i){var nx=S[i+1],d=nx?Math.max(1,nx.ts-s.ts):avg;total+=d;return{d:s.d,key:s.key,dur:d}});
+    var mp4=new Uint8Array(await mux(smp,cv.width,cv.height,desc).arrayBuffer());
+    finish(build(new Uint8Array(await still.arrayBuffer()),mp4,total-avg),'MOTION_'+Date.now()+'.jpg',still);
     say('');
   }catch(e){say('Gagal: '+(e.message||e))}
-  frames.forEach(function(f){f.b.close()});
   busy=false;shot.disabled=false;
 };
 
-/* --- gabung JPG + MP4 (format Google Motion Photo) --- */
+/* ---------- gabung JPG + MP4 (Google Motion Photo) ---------- */
 function sw(a,o,s){for(var i=0;i<s.length;i++)if(a[o+i]!==s.charCodeAt(i))return false;return true}
 function build(jpg,mp4,tsUs){
   if(jpg[0]!==0xFF||jpg[1]!==0xD8)throw new Error('Foto bukan JPG yang valid.');
@@ -172,7 +273,7 @@ function build(jpg,mp4,tsUs){
   return new Blob(parts,{type:'image/jpeg'});
 }
 
-/* --- hasil: simpan / bagikan --- */
+/* ---------- hasil ---------- */
 function finish(blob,name,prev){
   result={blob:blob,name:name};
   $('ri').src=URL.createObjectURL(prev||blob);
@@ -190,7 +291,7 @@ $('sh').onclick=async function(){
   else $('rt').textContent='Berbagi file tidak didukung. Pakai tombol Simpan.';
 };
 
-/* --- konverter --- */
+/* ---------- konverter ---------- */
 var dv=0;
 function pick(id,n,s){$(id).onchange=function(){var f=this.files[0];$(n).textContent=f?f.name:'Belum dipilih';$(s).classList.toggle('done',!!f);$('go').disabled=!($('img').files[0]&&$('vid').files[0])}}
 pick('img','n1','s1');pick('vid','n2','s2');
@@ -209,8 +310,9 @@ $('go').onclick=async function(){
   }catch(e){alert('Gagal: '+(e.message||e))}
 };
 
+drawAsp();setDur(st.dur);
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(function(){});
-start();
+startCam();
 })();
 </script>
 </body>
